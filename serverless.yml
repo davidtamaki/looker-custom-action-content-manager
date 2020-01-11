@@ -1,0 +1,39 @@
+service: looker-content-manager
+
+provider:
+  name: google
+  stage: dev
+  runtime: python37
+  region: REGION_NAME # region to deploy function, e.g. europe-west1
+  project: YOUR_PROJECT_NAME # google cloud project name
+  credentials: ~/PATH/TO/GCF_CREDENTIALS.json # path to gcf json creds
+  environment:
+    EXPECTED_LOOKER_SECRET_TOKEN: LOOKER_AUTH_TOKEN # remove before commiting to git
+    CALLBACK_URL_PREFIX: https://REGION_NAME-YOUR_PROJECT_NAME.cloudfunctions.net # specify before deploying
+
+plugins:
+  - serverless-google-cloudfunctions
+
+package:
+  exclude:
+    - node_modules/**
+    - .gitignore
+    - .git/**
+
+functions:
+  list:
+    handler: list
+    events:
+      - http: path
+
+  form:
+    handler: form
+    events:
+      - http: path
+
+  execute:
+    handler: execute
+    environment:
+      PYTHONWARNINGS: ignore # not needed if verifying ssl certs
+    events:
+      - http: path
