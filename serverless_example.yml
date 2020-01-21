@@ -8,8 +8,15 @@ provider:
   project: YOUR_PROJECT_NAME # google cloud project name
   credentials: ~/PATH/TO/GCF_CREDENTIALS.json # path to gcf json creds
   environment:
-    EXPECTED_LOOKER_SECRET_TOKEN: LOOKER_AUTH_TOKEN # remove before commiting to git
+    EXPECTED_LOOKER_SECRET_TOKEN: LOOKER_AUTH_TOKEN # auth token set in admin/actions
     CALLBACK_URL_PREFIX: https://REGION_NAME-YOUR_PROJECT_NAME.cloudfunctions.net # specify before deploying
+    # the following variables are for Looker SDK
+    # https://github.com/looker-open-source/sdk-codegen#environment-variable-configuration
+    LOOKERSDK_API_VERSION: "3.1"
+    LOOKERSDK_BASE_URL: https://MY_LOOKER.com:19999 
+    LOOKERSDK_CLIENT_ID: API_CLIENT_ID
+    LOOKERSDK_CLIENT_SECRET: API_CLIENT_SECRET
+    LOOKERSDK_VERIFY_SSL: "False" # Set to false if testing against self-signed certs
 
 plugins:
   - serverless-google-cloudfunctions
@@ -17,22 +24,23 @@ plugins:
 package:
   exclude:
     - node_modules/**
+    - __pycache__/**
     - .gitignore
     - .git/**
 
 functions:
-  list:
-    handler: list
+  action_list:
+    handler: action_list
     events:
       - http: path
 
-  form:
-    handler: form
+  action_form:
+    handler: action_form
     events:
       - http: path
 
-  execute:
-    handler: execute
+  action_execute:
+    handler: action_execute
     environment:
       PYTHONWARNINGS: ignore # not needed if verifying ssl certs
     events:

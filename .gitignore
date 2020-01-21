@@ -3,9 +3,10 @@
 .env
 tmp
 .coveralls.yml
+serverless.yml
 
-# Looker
-looker.ini
+# Python cache
+__pycache__
 
 # Logs
 *.log
