@@ -10,20 +10,22 @@ from looker_sdk import client, models, error
 # https://github.com/looker/actions/blob/master/docs/action_api.md#authentication
 def authenticate(request):
     if request.method != 'POST':
-        return Response("Request must be POST", status=401, mimetype='application/json')
+        r =  '|ERROR| Request must be POST'; print (r)
+        return Response(r, status=401, mimetype='application/json')
 
     elif 'authorization' not in request.headers:
-        return Response("Request does not have auth token", status=400, mimetype='application/json')
+        r = '|ERROR| Request does not have auth token'; print (r)
+        return Response(r, status=400, mimetype='application/json')
 
     else:
         expected_auth_header = 'Token token="{}"'.format(os.environ.get('EXPECTED_LOOKER_SECRET_TOKEN'))
         submitted_auth = request.headers['authorization']
-        # print ('request has header auth: {}'.format(submitted_auth))
         if hmac.compare_digest(expected_auth_header,submitted_auth):
-            return Response(status=200)
+            return Response(status=200, mimetype='application/json')
 
         else:
-            return Response("Incorrect token", status=403, mimetype='application/json')
+            r = '|ERROR| Incorrect token'; print (r)
+            return Response(r, status=403, mimetype='application/json')
 
 
 
@@ -65,9 +67,6 @@ def action_form(request):
     if auth.status_code != 200:
         return auth
 
-    # action: move to trash, restore, favorite, unfavorite
-    # pause schedules? copy to space? move to space?
-    # users - disable?
     response = [
         {
         "name": "action",
@@ -135,24 +134,31 @@ def action_execute(request):
         # data = json.loads(request['attachment']['data']) # for json_detail
 
         if request == None or not request['data']:
-            return Response("No data to process", status=401, mimetype='application/json')
+            r = '|ERROR| No data to process'; print (r)
+            return Response(r, status=401, mimetype='application/json')
 
         action = request['form_params'].get('action')
         look_or_dash = request['form_params'].get('content_type')
         column_name = request['form_params'].get('column_name')
         variable_id = request['form_params'].get('variable_id') # not required, will be None if empty
-        content_ids = [d[column_name] for d in request['data']]
+        content_ids = [d.get(column_name) for d in request['data']]
         content_ids = list(dict.fromkeys(content_ids)) # remove dups
         content_ids = [n for n in content_ids if isinstance(n,int)] # only keep ints
 
-        print ('Running {} againt these {}s: {}'.format(action, look_or_dash, content_ids))
+        print ('running {} againt these {}s: {}'.format(action, look_or_dash, content_ids))
 
         if content_ids:
-            handle_action(action, look_or_dash, content_ids, variable_id)
+            try:
+                handle_action(action, look_or_dash, content_ids, variable_id)
+            except:
+                r = '|ERROR| Something went wrong executing API calls'; print (r)
+                return Response(r, status=405, mimetype='application/json')    
         else:
-            return Response("Check column name entered and content_ids are integers", status=401, mimetype='application/json')
+            r = '|ERROR| Check column name entered and content_ids are integers'; print (r)
+            return Response(r, status=401, mimetype='application/json')
 
-    return Response(status=200, mimetype='application/json')
+    r = 'action completed successfully'; print (r)
+    return Response(r, status=200, mimetype='application/json')
 
 
 
@@ -160,10 +166,16 @@ def action_execute(request):
 def handle_action(action, content_type, content_ids, variable_id):
     if action == 'favorite':
         print('favoriting content')
-        favorite(action, content_type, content_ids, variable_id)
+        favorite_unfavorite(action, content_type, content_ids, variable_id)
     elif action == 'unfavorite':
         print('unfavoriting content')
-        favorite(action, content_type, content_ids, variable_id)
+        favorite_unfavorite(action, content_type, content_ids, variable_id)
+    elif action == 'copy':
+        print('copying content')
+        copy(action, content_type, content_ids, variable_id)
+    elif action == 'move':
+        print('moving content')
+        move(action, content_type, content_ids, variable_id)
     elif action == 'archive':
         print('archiving content')
         archive_restore(action, content_type, content_ids, {"deleted": True})
@@ -178,12 +190,54 @@ def handle_action(action, content_type, content_ids, variable_id):
 
 
 
-def favorite(action, content_type, content_ids, variable_id):
+def favorite_unfavorite(action, content_type, content_ids, user_id):
     sdk = client.setup()
+    sdk.login_user(user_id)
 
-    
+    if action == 'favorite':
+        content_meta_ids = [sdk.look(c_id, fields="content_metadata_id").content_metadata_id if content_type == 'look' else sdk.dashboard(c_id, fields="content_metadata_id").content_metadata_id for c_id in content_ids]
+        for n in content_meta_ids:
+            sdk.create_content_favorite({
+                "user_id": user_id, 
+                "content_metadata_id": n
+            })
+
+    elif action == 'unfavorite':
+        content_favorite_ids = [sdk.look(c_id, fields="content_favorite_id").content_favorite_id if content_type == 'look' else sdk.dashboard(c_id, fields="content_favorite_id").content_favorite_id for c_id in content_ids]
+        content_favorite_ids = [n for n in content_favorite_ids if isinstance(n,int)] # remove Nones
+        for n in content_favorite_ids:
+            sdk.delete_content_favorite(n)
     return
 
+
+
+def copy(action, content_type, content_ids, space_id):
+    sdk = client.setup()
+
+    if content_type == 'look':
+        for look_id in content_ids:
+            look = sdk.look(look_id)
+            new_look = {}
+            new_look['space_id'] = space_id
+            new_look['description'] = look.description
+            new_look['title'] = look.title
+            new_look['query_id'] = look.query_id
+            sdk.create_look(new_look)
+    elif content_type == 'dashboard':
+        print ('copying dashboards is tough... use gazer')
+
+    return
+
+
+def move(action, content_type, content_ids, space_id):
+    sdk = client.setup()
+
+    for c_id in content_ids:
+        if content_type == 'look':
+            sdk.update_look(c_id, {"folder_id": space_id})
+        elif content_type == 'dashboard':
+            sdk.update_dashboard(c_id, {"folder_id": space_id})
+    return
 
 
 
@@ -194,7 +248,7 @@ def archive_restore(action, content_type, content_ids, patch):
 
     if content_type == 'look':
         for look_id in content_ids:
-            look_updated = sdk.update_look(look_id,body=patch)
+            sdk.update_look(look_id,body=patch)
             # print('Look id {} is {}d'.format(str(look_updated.id), action))
 
     elif content_type == 'dashboard':
@@ -203,16 +257,12 @@ def archive_restore(action, content_type, content_ids, patch):
             dashboard_looks = sdk.dashboard(dashboard_id,fields="dashboard_elements(look_id)")
             if dashboard_looks:
                 looks_to_delete = looks_to_delete + [look.look_id for look in dashboard_looks.dashboard_elements]
-
-            dashboard_updated = sdk.update_dashboard(dashboard_id,body=patch)
-            # print('Dashboard id {} is {}'.format(str(dashboard_updated.id), action))
-
+            sdk.update_dashboard(dashboard_id,body=patch)
         looks_to_delete = list(dict.fromkeys(looks_to_delete)) # remove dups
         looks_to_delete = [n for n in looks_to_delete if isinstance(n,str)] # only keep strings (remove None) # this will turn to int in API 4.0
         for look_id in looks_to_delete:
-            look_updated = sdk.update_look(look_id,body=patch)
+            sdk.update_look(look_id,body=patch)
             # print('Look id {} is {}d'.format(str(look_updated.id), action))
-
     return 
 
 
