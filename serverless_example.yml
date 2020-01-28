@@ -27,6 +27,7 @@ package:
     - __pycache__/**
     - .gitignore
     - .git/**
+    - screenshot-example.jpg
 
 functions:
   action_list:
