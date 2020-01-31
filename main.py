@@ -94,8 +94,9 @@ def action_form(request):
         "required": True,
         "default": "look",
         "options": [
-                {"name": "look", "label": "Look"},
                 {"name": "dashboard", "label": "Dashboard"},
+                {"name": "look", "label": "Look"},
+                {"name": "schedule", "label": "Schedule"},
             ]
         },
         {
