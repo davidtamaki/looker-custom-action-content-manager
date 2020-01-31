@@ -3,7 +3,7 @@
 ![screenshot](screenshot-example.jpg)
 
 ## Description
-This Custom Action performs bulk actions on content, leveraging the Looker API and the System Activity model. It will enable you to select various actions (e.g. Favorite / Unfavorite, Copy / Move to Space, Archive / Restore from Trash) on a list of content IDs. This may be handy when you want to:
+This Custom Action performs bulk actions on content, leveraging the Looker API and the System Activity model. It will enable you to select various actions (e.g. Favorite / Unfavorite, Copy / Move to Space, Archive / Restore from Trash, Run Scheduled Plan) on a list of content IDs. This may be handy when you want to:
 
 - Archive all content that uses a specific model
 - Move all content to a space that was created by a specific users
@@ -14,7 +14,7 @@ This Custom Action performs bulk actions on content, leveraging the Looker API a
 ## How to Use
 1. Use any Explore to filter to a list of content IDs
 2. Send or schedule the data to Custom Action
-3. Select the **action** you want to execute and the **content type** (Look or Dashboard). Enter the **column name** which should be used as the content ID (e.g. `dashboard.id` or `look.id`) and the **variable ID** if required.
+3. Select the **action** you want to execute and the **content type** (Dashboard, Look, or Scheduled). Enter the **column name** which should be used as the content ID (e.g. `dashboard.id` or `look.id` or `scheduled_plan.id`) and the **variable ID** if required.
 
 
 ## Steps to Deploy with Serverless
