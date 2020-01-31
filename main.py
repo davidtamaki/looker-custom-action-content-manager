@@ -1,6 +1,7 @@
 import json
 import os
 import hmac
+import time
 from flask import Response
 from looker_sdk import client, models, error
 
@@ -82,12 +83,13 @@ def action_form(request):
                 {"name": "move", "label": "Move to Space"},
                 {"name": "archive", "label": "Move to Trash"},
                 {"name": "restore", "label": "Restore from Trash"},
+                {"name": "schedule", "label": "Run a Scheduled Plan"},
             ]
         },
         {
         "name": "content_type",
         "label": "Content Type",
-        "description": "Look or Dashboard?",
+        "description": "Look, Dashboard, or Schedule?", # content type doesn't actually matter for schedules
         "type": "select",
         "required": True,
         "default": "look",
@@ -99,7 +101,7 @@ def action_form(request):
         {
         "name": "column_name",
         "label": "Column Name",
-        "description": "Enter the column name with content IDs",
+        "description": "Enter the column name with content/scheduled plan IDs",
         "type": "text",
         "required": True,
         "default": "look.id",
@@ -138,18 +140,18 @@ def action_execute(request):
             return Response(r, status=401, mimetype='application/json')
 
         action = request['form_params'].get('action')
-        look_or_dash = request['form_params'].get('content_type')
+        content_type = request['form_params'].get('content_type')
         column_name = request['form_params'].get('column_name')
         variable_id = request['form_params'].get('variable_id') # not required, will be None if empty
         content_ids = [d.get(column_name) for d in request['data']]
         content_ids = list(dict.fromkeys(content_ids)) # remove dups
         content_ids = [n for n in content_ids if isinstance(n,int)] # only keep ints
 
-        print ('running {} againt these {}s: {}'.format(action, look_or_dash, content_ids))
+        print ('running {} againt these {}s: {}'.format(action, content_type, content_ids))
 
         if content_ids:
             try:
-                handle_action(action, look_or_dash, content_ids, variable_id)
+                handle_action(action, content_type, content_ids, variable_id)
             except:
                 r = '|ERROR| Something went wrong executing API calls'; print (r)
                 return Response(r, status=405, mimetype='application/json')    
@@ -182,9 +184,11 @@ def handle_action(action, content_type, content_ids, variable_id):
     elif action == 'restore':
         print('restoring content')
         archive_restore(action, content_type, content_ids, {"deleted": False})
+    elif action == 'schedule':
+        print('running schedules')
+        run_schedule(action, content_ids)
     else:
         print ('no action')
-
     return
 
 
@@ -211,6 +215,7 @@ def favorite_unfavorite(action, content_type, content_ids, user_id):
 
 
 
+
 def copy(action, content_type, content_ids, space_id):
     sdk = client.setup()
 
@@ -229,6 +234,8 @@ def copy(action, content_type, content_ids, space_id):
     return
 
 
+
+
 def move(action, content_type, content_ids, space_id):
     sdk = client.setup()
 
@@ -238,7 +245,6 @@ def move(action, content_type, content_ids, space_id):
         elif content_type == 'dashboard':
             sdk.update_dashboard(c_id, {"folder_id": space_id})
     return
-
 
 
 
@@ -267,5 +273,13 @@ def archive_restore(action, content_type, content_ids, patch):
 
 
 
+
+def run_schedule(action, scheduled_plan_ids):
+    sdk = client.setup()
+
+    for sp_id in scheduled_plan_ids:
+        sdk.scheduled_plan_run_once_by_id(sp_id, {})
+        time.sleep(.5) # endpoint is rate limited to 10 calls per second
+    return    
 
 
