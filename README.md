@@ -8,6 +8,7 @@ This Custom Action performs bulk actions on content, leveraging the Looker API a
 - Archive all content that uses a specific model
 - Move all content to a space that was created by a specific users
 - Assign favorite content to a given user
+- Rerun all scheduled plans that have failed
 
 
 ## How to Use
