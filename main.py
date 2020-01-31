@@ -165,22 +165,22 @@ def action_execute(request):
 
 def handle_action(action, content_type, content_ids, variable_id):
     if action == 'favorite':
-        print('favoriting content')
+        print ('favoriting content')
         favorite_unfavorite(action, content_type, content_ids, variable_id)
     elif action == 'unfavorite':
-        print('unfavoriting content')
+        print ('unfavoriting content')
         favorite_unfavorite(action, content_type, content_ids, variable_id)
     elif action == 'copy':
-        print('copying content')
+        print ('copying content')
         copy(action, content_type, content_ids, variable_id)
     elif action == 'move':
-        print('moving content')
+        print ('moving content')
         move(action, content_type, content_ids, variable_id)
     elif action == 'archive':
-        print('archiving content')
+        print ('archiving content')
         archive_restore(action, content_type, content_ids, {"deleted": True})
     elif action == 'restore':
-        print('restoring content')
+        print ('restoring content')
         archive_restore(action, content_type, content_ids, {"deleted": False})
     else:
         print ('no action')
@@ -192,7 +192,11 @@ def handle_action(action, content_type, content_ids, variable_id):
 
 def favorite_unfavorite(action, content_type, content_ids, user_id):
     sdk = client.setup()
-    sdk.login_user(user_id)
+    try:
+        sdk.login_user(user_id)
+    except:
+        print ('|ERROR| Unable to sudo as user {}'.format(str(user_id)))
+        return
 
     if action == 'favorite':
         content_meta_ids = [sdk.look(c_id, fields="content_metadata_id").content_metadata_id if content_type == 'look' else sdk.dashboard(c_id, fields="content_metadata_id").content_metadata_id for c_id in content_ids]
@@ -226,6 +230,34 @@ def copy(action, content_type, content_ids, space_id):
     elif content_type == 'dashboard':
         print ('copying dashboards is tough... use gazer')
 
+        # dashboards WIP
+        # will need to do something like this
+        # create dash, return id 
+        # create dashboard elements (sdk.update_dashboard_element), return dashboard layout
+        #   special circumstances for merge queries and looks (need to create these first)
+        # update dashboard layout with new dashboard elements (sdk.update_dashboard_layout)
+        # create dashboard filters and tie to dashboard elements (sdk.create_dashboard_filters)
+
+        # new_dashboard = {}
+        # new_dashboard['space_id'] = space_id
+        # new_dashboard['description'] = dashboard.description
+        # new_dashboard['title'] = dashboard.title
+        # new_dashboard['preferred_viewer'] = dashboard.preferred_viewer
+        # new_dash_obj = sdk.create_dashboard(new_dashboard)
+        # new_dashboard['id'] = new_dash_obj.id
+        # new_dashboard['dashboard_elements'] = json.dumps(dashboard.dashboard_elements, default=lambda x: x.__dict__) # convert to json
+        # new_dashboard['dashboard_elements'] = json.loads(new_dashboard.get('dashboard_elements')) # convert to dict to amend ids
+        # for de in new_dashboard.get('dashboard_elements'):
+        #     de['dashboard_id'] = new_dashboard['id']
+        #     sdk.create_dashboard_element(json.dumps(de))
+        # # SDK dashboard_layout(dashboard_layout_id) get # dashboard.dashboard_layouts[0].dashboard_layout_components[1]
+        # new_dash_obj = sdk.dashboard(new_dash_obj.id)
+        # new_dashboard['dashboard_layouts'] = json.dumps(new_dash_obj.dashboard_layouts, default=lambda x: x.__dict__) # convert to json
+        # new_dashboard['dashboard_layouts'] = json.loads(new_dashboard.get('dashboard_layouts')) # convert to dict to amend ids
+        # for dl in new_dashboard.get('dashboard_layouts'):
+        #     sdk.create_dashboard_layout(json.dumps(dl))  # wip overwrite with original dash
+        # # new_dashboard['dashboard_layouts'] = json.dumps(dashboard.dashboard_layouts, default=lambda x: x.__dict__) # wip
+        # # new_dashboard['dashboard_filters'] = json.dumps(dashboard.dashboard_filters, default=lambda x: x.__dict__) # wip
     return
 
 
@@ -249,7 +281,7 @@ def archive_restore(action, content_type, content_ids, patch):
     if content_type == 'look':
         for look_id in content_ids:
             sdk.update_look(look_id,body=patch)
-            # print('Look id {} is {}d'.format(str(look_updated.id), action))
+            # print ('Look id {} is {}d'.format(str(look_updated.id), action))
 
     elif content_type == 'dashboard':
         looks_to_delete = []
@@ -262,7 +294,7 @@ def archive_restore(action, content_type, content_ids, patch):
         looks_to_delete = [n for n in looks_to_delete if isinstance(n,str)] # only keep strings (remove None) # this will turn to int in API 4.0
         for look_id in looks_to_delete:
             sdk.update_look(look_id,body=patch)
-            # print('Look id {} is {}d'.format(str(look_updated.id), action))
+            # print ('Look id {} is {}d'.format(str(look_updated.id), action))
     return 
 
 
