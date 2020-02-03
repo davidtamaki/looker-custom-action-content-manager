@@ -14,7 +14,7 @@ This Custom Action performs bulk actions on content, leveraging the Looker API a
 ## How to Use
 1. Use any Explore to filter to a list of content IDs
 2. Send or schedule the data to Custom Action
-3. Select the **action** you want to execute and the **content type** (Dashboard, Look, or Scheduled). Enter the **column name** which should be used as the content ID (e.g. `dashboard.id` or `look.id` or `scheduled_plan.id`) and the **variable ID** if required.
+3. Select the **action** you want to execute and the **content type** (Dashboard, Look, or Schedule). Enter the **column name** which should be used as the content ID (e.g. `dashboard.id` or `look.id` or `scheduled_plan.id`) and the **variable ID** if required.
 
 
 ## Steps to Deploy with Serverless
@@ -31,6 +31,8 @@ Before starting the steps below, ensure you have [Serverless installed](https://
     - `credentials` - the path to gcf json credentials file, e.g. ~/PATH/TO/GCF_CREDENTIALS.json
 3. Set the envirnment variables, refer to [Looker SDK docs](https://github.com/looker-open-source/sdk-codegen#environment-variable-configuration) for guidance on SDK variables:
     - `EXPECTED_LOOKER_SECRET_TOKEN` - can be any random string. This will be used as an auth token set in /admin/actions
+    - `ACTION_NAME` - unique name for the action, e.g. looker-content-manager
+    - `ACTION_LABEL` - human-readable label to appear in Looker, e.g. Looker Content Manager
     - `CALLBACK_URL_PREFIX` - specify before deploying, e.g. https://REGION_NAME-YOUR_PROJECT_NAME.cloudfunctions.net
     - `LOOKERSDK_API_VERSION` - use "3.1"
     - `LOOKERSDK_BASE_URL` - base url for Looker instance, e.g. https://MY_LOOKER.com:19999

@@ -39,8 +39,8 @@ def action_list(request):
 
     response = { 
         "integrations": [{
-            "name": "looker-content-manager",
-            "label": "Looker Content Manager",
+            "name": os.environ.get('ACTION_NAME'),
+            "label": os.environ.get('ACTION_LABEL'),
             "supported_action_types": ["cell", "query"],
             "form_url": os.environ.get('CALLBACK_URL_PREFIX') + "/action_form",
             "url": os.environ.get('CALLBACK_URL_PREFIX') + "/action_execute",
@@ -187,7 +187,7 @@ def handle_action(action, content_type, content_ids, variable_id):
         archive_restore(action, content_type, content_ids, {"deleted": False})
     elif action == 'schedule':
         print('running schedules')
-        run_schedule(action, content_ids)
+        run_schedule(content_ids)
     else:
         print ('no action')
     return
@@ -198,17 +198,31 @@ def handle_action(action, content_type, content_ids, variable_id):
 def favorite_unfavorite(action, content_type, content_ids, user_id):
     sdk = client.setup()
     sdk.login_user(user_id)
+    # TODO validate user_id 
 
     if action == 'favorite':
-        content_meta_ids = [sdk.look(c_id, fields="content_metadata_id").content_metadata_id if content_type == 'look' else sdk.dashboard(c_id, fields="content_metadata_id").content_metadata_id for c_id in content_ids]
+        if content_type == 'look':
+            content_meta_ids = [sdk.look(c_id, fields="content_metadata_id").content_metadata_id for c_id in content_ids]
+        elif content_type == 'dashboard':
+            content_meta_ids = [sdk.dashboard(c_id, fields="content_metadata_id").content_metadata_id for c_id in content_ids]
+        else:
+            print ('need to select look or dashboard')
+            return
         for n in content_meta_ids:
+            # TODO check if favorite content already exists
             sdk.create_content_favorite({
                 "user_id": user_id, 
                 "content_metadata_id": n
             })
 
     elif action == 'unfavorite':
-        content_favorite_ids = [sdk.look(c_id, fields="content_favorite_id").content_favorite_id if content_type == 'look' else sdk.dashboard(c_id, fields="content_favorite_id").content_favorite_id for c_id in content_ids]
+        if content_type == 'look':
+            content_favorite_ids = [sdk.look(c_id, fields="content_favorite_id").content_favorite_id for c_id in content_ids]
+        elif content_type == 'dashboard':
+            content_favorite_ids = [sdk.dashboard(c_id, fields="content_favorite_id").content_favorite_id for c_id in content_ids]
+        else:
+            print ('need to select look or dashboard')
+            return
         content_favorite_ids = [n for n in content_favorite_ids if isinstance(n,int)] # remove Nones
         for n in content_favorite_ids:
             sdk.delete_content_favorite(n)
@@ -220,6 +234,7 @@ def favorite_unfavorite(action, content_type, content_ids, user_id):
 def copy(action, content_type, content_ids, space_id):
     sdk = client.setup()
 
+    # TODO validate space_id 
     if content_type == 'look':
         for look_id in content_ids:
             look = sdk.look(look_id)
@@ -240,6 +255,7 @@ def copy(action, content_type, content_ids, space_id):
 def move(action, content_type, content_ids, space_id):
     sdk = client.setup()
 
+    # TODO validate space_id 
     for c_id in content_ids:
         if content_type == 'look':
             sdk.update_look(c_id, {"folder_id": space_id})
@@ -275,10 +291,15 @@ def archive_restore(action, content_type, content_ids, patch):
 
 
 
-def run_schedule(action, scheduled_plan_ids):
+def run_schedule(scheduled_plan_ids):
     sdk = client.setup()
 
     for sp_id in scheduled_plan_ids:
+        sp = sdk.scheduled_plan(sp_id)
+        if os.environ.get('ACTION_NAME') in sp.scheduled_plan_destination[0].type:
+            print ('skipping scheduled plan sent to {}'.format(os.environ.get('ACTION_NAME'))) # prevent infinite loop
+            continue
+
         sdk.scheduled_plan_run_once_by_id(sp_id, {})
         time.sleep(.5) # endpoint is rate limited to 10 calls per second
     return    
